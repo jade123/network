@@ -1,0 +1,72 @@
+{
+  "name": "network-traffic-monitor-main",
+  "version": "1.0.0",
+  "description": "基于 CloudValley（睿谷）LuCI 网关的员工流量监控与自动限制管理系统。",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:backend": "node scripts/build-backend.js",
+    "build:backend:mac-universal": "node scripts/assert-platform.js darwin && node scripts/build-mac-universal-backend.js",
+    "prepare:app-config": "node scripts/prepare-app-config.js",
+    "build:win": "node scripts/assert-platform.js win32 && npm run build:backend && npm run prepare:app-config && electron-builder --win",
+    "build:mac": "node scripts/assert-platform.js darwin && npm run build:backend:mac-universal && npm run prepare:app-config && electron-builder --mac --universal",
+    "dist": "npm run build:backend && npm run prepare:app-config && electron-builder"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "7zip-bin": "^5.2.0"
+  },
+  "devDependencies": {
+    "electron": "^31.7.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.cloudvalley.networktrafficmonitor",
+    "productName": "Network Traffic Monitor",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "backend",
+        "filter": [
+          "netmon-backend*"
+        ]
+      },
+      {
+        "from": "config.example.json",
+        "to": "config/config.example.json"
+      },
+      {
+        "from": "build/app-config/config.json",
+        "to": "config/config.json"
+      }
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.utilities"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

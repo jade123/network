@@ -1,0 +1,2434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>流量态势总览</title>
+  <style>
+    :root {
+      --bg: #071014;
+      --panel: #0d1a20;
+      --panel-2: #101f27;
+      --panel-3: #142831;
+      --line: #223b46;
+      --line-soft: rgba(114, 232, 255, 0.16);
+      --text: #e7f5f7;
+      --muted: #89a2aa;
+      --muted-2: #607982;
+      --cyan: #37d8ff;
+      --cyan-soft: rgba(55, 216, 255, 0.13);
+      --green: #4ade80;
+      --green-soft: rgba(74, 222, 128, 0.14);
+      --amber: #fbbf24;
+      --amber-soft: rgba(251, 191, 36, 0.14);
+      --red: #fb4d67;
+      --red-soft: rgba(251, 77, 103, 0.14);
+      --blue: #60a5fa;
+      --blue-soft: rgba(96, 165, 250, 0.14);
+      --radius: 8px;
+      --shadow: 0 20px 70px rgba(0, 0, 0, 0.28);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        linear-gradient(rgba(55, 216, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(55, 216, 255, 0.035) 1px, transparent 1px),
+        var(--bg);
+      background-size: 28px 28px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.45;
+    }
+
+    button, input, select { font: inherit; }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 64px;
+      padding: 12px 20px;
+      background: rgba(7, 16, 20, 0.92);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 260px;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      color: var(--cyan);
+      border: 1px solid rgba(55, 216, 255, 0.42);
+      border-radius: 8px;
+      background: rgba(55, 216, 255, 0.08);
+    }
+
+    .brand h1 {
+      font-size: 18px;
+      line-height: 1.1;
+      letter-spacing: 0;
+      font-weight: 800;
+    }
+
+    .brand small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .top-status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      min-width: 260px;
+    }
+
+    .shell {
+      width: min(1880px, 100%);
+      margin: 0 auto;
+      padding: 16px 20px 26px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 28px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(13, 26, 32, 0.74);
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .pill strong { color: var(--text); }
+    .pill-ok { color: var(--green); border-color: rgba(74, 222, 128, 0.35); background: var(--green-soft); }
+    .pill-warn { color: var(--amber); border-color: rgba(251, 191, 36, 0.34); background: var(--amber-soft); }
+    .pill-danger { color: var(--red); border-color: rgba(251, 77, 103, 0.34); background: var(--red-soft); }
+    .pill-cyan { color: var(--cyan); border-color: rgba(55, 216, 255, 0.34); background: var(--cyan-soft); }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: currentColor;
+      box-shadow: 0 0 14px currentColor;
+    }
+
+    .btn {
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--text);
+      background: var(--panel-2);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.15s;
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .btn:hover { border-color: rgba(55, 216, 255, 0.5); background: var(--panel-3); }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-primary { color: #061116; background: var(--cyan); border-color: var(--cyan); }
+    .btn-primary:hover { background: #66e3ff; }
+    .btn-danger { color: #fff; background: rgba(251, 77, 103, 0.2); border-color: rgba(251, 77, 103, 0.45); }
+    .btn-warn { color: #1c1302; background: var(--amber); border-color: var(--amber); }
+    .btn-sm { height: 28px; padding: 0 9px; font-size: 11px; }
+    .btn-icon { width: 34px; padding: 0; }
+
+    .overview {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 360px;
+      gap: 14px;
+      min-height: 0;
+    }
+
+    .panel {
+      position: relative;
+      background: linear-gradient(180deg, rgba(20, 40, 49, 0.86), rgba(13, 26, 32, 0.94));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(55, 216, 255, 0.13), transparent 32%, transparent 70%, rgba(74, 222, 128, 0.06));
+      opacity: 0.62;
+    }
+
+    .panel-header {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 42px;
+      padding: 12px 14px 8px;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .panel-title span {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--cyan);
+      box-shadow: 0 0 14px var(--cyan);
+    }
+
+    .panel-sub {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .metric-grid {
+      grid-column: 1;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      overflow: visible;
+    }
+
+    .metric {
+      min-height: 154px;
+      padding: 16px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .metric .value {
+      margin-top: 13px;
+      font-size: clamp(21px, 2vw, 32px);
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: 0;
+      color: var(--text);
+    }
+
+    .metric .unit {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 800;
+      margin-left: 4px;
+    }
+
+    .metric .sub {
+      margin-top: 12px;
+      color: var(--muted-2);
+      font-size: 10.5px;
+      font-weight: 650;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .metric-cyan .value { color: var(--cyan); }
+    .metric-green .value { color: var(--green); }
+    .metric-amber .value { color: var(--amber); }
+    .metric-red .value { color: var(--red); }
+
+    .event-panel {
+      grid-column: 3;
+      grid-row: 1 / span 2;
+      display: flex;
+      flex-direction: column;
+      min-height: 382px;
+    }
+
+    .wan-panel {
+      min-height: 360px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      z-index: 1;
+      height: calc(100% - 42px);
+      padding: 4px 12px 12px;
+    }
+
+    .wan-panel .canvas-wrap {
+      height: 236px;
+      padding-bottom: 6px;
+    }
+
+    .bandwidth-summary {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 0 14px 14px;
+    }
+
+    .bandwidth-card {
+      border: 1px solid rgba(34, 59, 70, 0.88);
+      border-radius: 8px;
+      background: rgba(7, 16, 20, 0.48);
+      padding: 10px 12px;
+    }
+
+    .bandwidth-card h3 {
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .bandwidth-card.in h3 { color: var(--blue); }
+    .bandwidth-card.out h3 { color: var(--green); }
+
+    .bandwidth-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .bandwidth-metrics span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 750;
+    }
+
+    .bandwidth-metrics strong {
+      display: block;
+      margin-top: 3px;
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 850;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+
+    .table-wrap {
+      position: relative;
+      z-index: 1;
+      overflow: auto;
+      padding: 0 12px 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th, td {
+      padding: 9px 8px;
+      border-bottom: 1px solid rgba(34, 59, 70, 0.86);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      color: var(--muted);
+      background: rgba(13, 26, 32, 0.96);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    tr:hover td { background: rgba(55, 216, 255, 0.045); }
+    .right { text-align: right; }
+    .center { text-align: center; }
+
+    .ip-tag {
+      display: inline-flex;
+      align-items: center;
+      max-width: 132px;
+      padding: 2px 7px;
+      color: #c8f7ff;
+      border: 1px solid rgba(55, 216, 255, 0.22);
+      border-radius: 5px;
+      background: rgba(55, 216, 255, 0.08);
+      font-family: "SF Mono", "Consolas", monospace;
+      font-size: 11px;
+      font-weight: 750;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ip-tag-button {
+      appearance: none;
+      margin: 0;
+      cursor: pointer;
+      transition: 0.16s ease;
+    }
+
+    .ip-tag-button:hover {
+      color: #ffffff;
+      border-color: rgba(55, 216, 255, 0.58);
+      background: rgba(55, 216, 255, 0.18);
+      box-shadow: 0 0 0 2px rgba(55, 216, 255, 0.08);
+    }
+
+    .mac-tag {
+      display: inline-flex;
+      align-items: center;
+      max-width: 150px;
+      padding: 2px 7px;
+      color: #d9eff4;
+      border: 1px solid rgba(96, 165, 250, 0.22);
+      border-radius: 5px;
+      background: rgba(96, 165, 250, 0.08);
+      font-family: "SF Mono", "Consolas", monospace;
+      font-size: 11px;
+      font-weight: 750;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .employee-name {
+      display: inline-block;
+      max-width: 150px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 760;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    .employee-muted {
+      color: var(--muted-2);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .route-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 42px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 850;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      background: rgba(137, 162, 170, 0.08);
+    }
+
+    .route-wan, .route-cn { color: var(--green); border-color: rgba(74, 222, 128, 0.32); background: var(--green-soft); }
+    .route-vpn { color: var(--cyan); border-color: rgba(55, 216, 255, 0.32); background: var(--cyan-soft); }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 56px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 850;
+      color: var(--green);
+      border: 1px solid rgba(74, 222, 128, 0.3);
+      background: var(--green-soft);
+    }
+
+    .status-danger { color: var(--red); border-color: rgba(251, 77, 103, 0.34); background: var(--red-soft); }
+    .status-warning { color: var(--amber); border-color: rgba(251, 191, 36, 0.34); background: var(--amber-soft); }
+    .status-ok { color: var(--green); border-color: rgba(74, 222, 128, 0.3); background: var(--green-soft); }
+
+    .status-button {
+      appearance: none;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+
+    .status-button:hover {
+      border-color: rgba(55, 216, 255, 0.58);
+      background: rgba(55, 216, 255, 0.14);
+      box-shadow: 0 0 0 2px rgba(55, 216, 255, 0.08);
+    }
+
+    .bar-cell {
+      min-width: 92px;
+    }
+
+    .bar {
+      height: 6px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(137, 162, 170, 0.16);
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      min-width: 2px;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--cyan), var(--green));
+    }
+
+    .rank-total {
+      color: var(--amber);
+      font-weight: 900;
+    }
+
+    .ops {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .control-panel {
+      padding: 14px;
+    }
+
+    .control-group {
+      position: relative;
+      z-index: 1;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(34, 59, 70, 0.8);
+    }
+
+    .control-group:last-child { border-bottom: none; padding-bottom: 0; }
+    .control-title { color: var(--text); font-size: 12px; font-weight: 850; margin-bottom: 9px; }
+    .field-row { display: grid; grid-template-columns: 1fr 94px; gap: 8px; align-items: center; margin-top: 8px; }
+    .field-row label { color: var(--muted); font-size: 11px; font-weight: 700; }
+
+    input, select {
+      height: 32px;
+      min-width: 0;
+      color: var(--text);
+      background: rgba(7, 16, 20, 0.58);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0 9px;
+      outline: none;
+    }
+
+    input:focus, select:focus { border-color: rgba(55, 216, 255, 0.56); }
+    input::placeholder { color: var(--muted-2); }
+
+    textarea {
+      width: 100%;
+      min-height: 72px;
+      resize: vertical;
+      color: var(--text);
+      background: rgba(7, 16, 20, 0.58);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 9px;
+      outline: none;
+      font: inherit;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    textarea:focus { border-color: rgba(55, 216, 255, 0.56); }
+    textarea::placeholder { color: var(--muted-2); }
+
+    .switch-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 22px;
+      flex: 0 0 auto;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      inset: 0;
+      cursor: pointer;
+      border-radius: 999px;
+      background: rgba(137, 162, 170, 0.22);
+      border: 1px solid var(--line);
+      transition: 0.2s;
+    }
+    .slider::before {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      background: var(--muted);
+      transition: 0.2s;
+    }
+    input:checked + .slider { background: var(--cyan-soft); border-color: rgba(55, 216, 255, 0.56); }
+    input:checked + .slider::before { transform: translateX(18px); background: var(--cyan); box-shadow: 0 0 12px var(--cyan); }
+
+    .detail-panel { min-height: 420px; }
+    .detail-toolbar {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .detail-toolbar-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .query-tools {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .query-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .query-group span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .query-group select,
+    .query-input {
+      height: 30px;
+      min-width: 0;
+      color: var(--text);
+      background: rgba(7, 16, 20, 0.58);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0 9px;
+      outline: none;
+    }
+
+    .query-input {
+      width: min(290px, 100%);
+    }
+
+    .query-group select:focus,
+    .query-input:focus {
+      border-color: rgba(55, 216, 255, 0.56);
+    }
+
+    .query-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid rgba(55, 216, 255, 0.32);
+      border-radius: 999px;
+      color: var(--cyan);
+      background: var(--cyan-soft);
+      font-size: 11px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .query-chip strong {
+      color: var(--text);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      min-height: 30px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--muted);
+      background: rgba(7, 16, 20, 0.4);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      color: #061116;
+      border-color: var(--cyan);
+      background: var(--cyan);
+    }
+
+    .detail-table-wrap {
+      position: relative;
+      z-index: 1;
+      max-height: 520px;
+      overflow: auto;
+      padding: 0 12px 12px;
+    }
+
+    .query-hit-row td {
+      background: rgba(55, 216, 255, 0.05);
+    }
+
+    .query-hit-row:hover td {
+      background: rgba(55, 216, 255, 0.09);
+    }
+
+    .whitelist {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .whitelist-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(7, 16, 20, 0.4);
+    }
+
+    .binding-list {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      max-height: 150px;
+      overflow: auto;
+    }
+
+    .binding-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(7, 16, 20, 0.38);
+    }
+
+    .binding-name {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .inline-actions {
+      display: inline-flex;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(1, 7, 10, 0.72);
+      backdrop-filter: blur(14px);
+    }
+
+    .modal-card {
+      width: 430px;
+      max-width: 100%;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .modal-card h3 {
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+
+    .modal-card-wide {
+      width: min(960px, calc(100vw - 30px));
+      max-height: calc(100vh - 36px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-title-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .modal-title-row h3 { margin: 0; }
+
+    .ip-detail-source {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      word-break: break-all;
+    }
+
+    .ip-detail-table-wrap {
+      overflow: auto;
+      max-height: min(620px, calc(100vh - 180px));
+      border: 1px solid rgba(42, 72, 84, 0.75);
+      border-radius: 8px;
+      background: rgba(5, 15, 19, 0.38);
+    }
+
+    .ip-detail-table th,
+    .ip-detail-table td {
+      padding: 10px 12px;
+      white-space: nowrap;
+    }
+
+    .access-cell {
+      min-width: 190px;
+      max-width: 280px;
+      white-space: normal !important;
+    }
+
+    .access-main {
+      margin-top: 5px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      word-break: break-all;
+    }
+
+    .access-note {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 10.5px;
+      font-weight: 650;
+      word-break: break-all;
+    }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .form-group input, .form-group select { width: 100%; }
+
+    .toast {
+      position: fixed;
+      z-index: 120;
+      right: 20px;
+      top: 78px;
+      max-width: min(420px, calc(100vw - 40px));
+      padding: 11px 14px;
+      border: 1px solid rgba(55, 216, 255, 0.32);
+      border-radius: 8px;
+      color: var(--text);
+      background: rgba(13, 26, 32, 0.94);
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(-8px);
+      pointer-events: none;
+      transition: 0.2s;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast-error { border-color: rgba(251, 77, 103, 0.44); color: #ffd5dc; }
+    .toast-warn { border-color: rgba(251, 191, 36, 0.44); color: #ffe7a3; }
+
+    .empty {
+      position: relative;
+      z-index: 1;
+      padding: 30px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 1120px) {
+      .overview {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 360px;
+      }
+      .metric-grid { grid-column: 1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .ops { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 820px) {
+      .topbar, .actions, .top-status { align-items: stretch; flex-direction: column; }
+      .topbar { position: static; }
+      .brand, .actions { min-width: 0; width: 100%; }
+      .actions { display: grid; grid-template-columns: 1fr 1fr; }
+      .overview { display: block; }
+      .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 14px; }
+      .wan-panel { min-height: 390px; margin-bottom: 14px; }
+      .wan-panel .canvas-wrap { height: 210px; }
+      .bandwidth-summary { grid-template-columns: 1fr; }
+      .detail-toolbar { align-items: stretch; flex-direction: column; }
+      .detail-toolbar-head { align-items: stretch; }
+      .query-tools { align-items: stretch; justify-content: stretch; }
+      .query-group, .query-input { width: 100%; }
+      .query-tools .btn { width: calc(50% - 4px); }
+      .field-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6"/><path d="M6 20v-2"/><path d="M18 20v-4"/><path d="M4 14l4-4 4 3 6-7 2 2"/></svg>
+      </div>
+      <div>
+        <h1>流量态势总览</h1>
+        <small>CloudValley LuCI 员工 IP 监控</small>
+      </div>
+    </div>
+
+    <div class="top-status">
+      <span id="conn-status" class="pill pill-warn"><span class="dot"></span>连接中</span>
+      <span id="scrape-time" class="pill">更新时间 <strong>-</strong></span>
+      <span id="gateway-pill" class="pill">网关 <strong>-</strong></span>
+      <span id="auto-pill" class="pill">自动限制 <strong>-</strong></span>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-refresh" onclick="refreshData()" title="刷新数据">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        刷新
+      </button>
+      <button class="btn" onclick="exportData()" title="导出报表">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        导出
+      </button>
+    </div>
+  </header>
+
+  <div id="toast" class="toast"></div>
+
+  <main class="shell">
+    <section class="overview">
+      <div class="metric-grid">
+        <div class="panel metric metric-cyan">
+          <div class="label">监控 IP</div>
+          <div class="value" id="stat-ip-count">0</div>
+          <div class="sub">外部源 + 目的地址</div>
+        </div>
+        <div class="panel metric metric-green">
+          <div class="label">总下载</div>
+          <div class="value"><span id="stat-total-down">0.00</span><span class="unit">GB</span></div>
+          <div class="sub">峰值 <span id="stat-peak-down-ip">-</span></div>
+        </div>
+        <div class="panel metric metric-cyan">
+          <div class="label">总上传</div>
+          <div class="value"><span id="stat-total-up">0.00</span><span class="unit">GB</span></div>
+          <div class="sub">峰值 <span id="stat-peak-up-ip">-</span></div>
+        </div>
+        <div class="panel metric metric-red">
+          <div class="label">告警事件</div>
+          <div class="value" id="stat-alerts">0</div>
+          <div class="sub">需限制 <span id="stat-limit-suggest">0</span> 个</div>
+        </div>
+        <div class="panel metric metric-amber">
+          <div class="label">员工内网</div>
+          <div class="value" id="stat-staff-count">0</div>
+          <div class="sub">TOP 员工实时排行</div>
+        </div>
+        <div class="panel metric metric-green">
+          <div class="label">PBR 规则</div>
+          <div class="value" id="stat-pbr-count">0</div>
+          <div class="sub">通道限制规则</div>
+        </div>
+      </div>
+
+      <div class="panel wan-panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title"><span></span>外网流量监控</div>
+            <div class="panel-sub">tun0 入站 / 出站 · <span id="wan-bandwidth-time">等待数据</span></div>
+          </div>
+          <div class="pill pill-cyan">3 秒刷新</div>
+        </div>
+        <div class="canvas-wrap"><canvas id="wanBandwidthCanvas"></canvas></div>
+        <div class="bandwidth-summary">
+          <div class="bandwidth-card in">
+            <h3>入站</h3>
+            <div class="bandwidth-metrics">
+              <div><span>当前</span><strong id="wan-rx-current">-</strong></div>
+              <div><span>平均</span><strong id="wan-rx-avg">-</strong></div>
+              <div><span>峰值</span><strong id="wan-rx-peak">-</strong></div>
+            </div>
+          </div>
+          <div class="bandwidth-card out">
+            <h3>出站</h3>
+            <div class="bandwidth-metrics">
+              <div><span>当前</span><strong id="wan-tx-current">-</strong></div>
+              <div><span>平均</span><strong id="wan-tx-avg">-</strong></div>
+              <div><span>峰值</span><strong id="wan-tx-peak">-</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="ops">
+      <aside class="panel control-panel">
+        <div class="control-group">
+          <div class="control-title">告警阈值</div>
+          <div class="field-row">
+            <label for="threshold-down">下载阈值 MB</label>
+            <input type="number" id="threshold-down" value="2000" onchange="updateThresholds()">
+          </div>
+          <div class="field-row">
+            <label for="threshold-up">上传阈值 MB</label>
+            <input type="number" id="threshold-up" value="500" onchange="updateThresholds()">
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="switch-line">
+            <div>
+              <div class="control-title" style="margin-bottom:2px;">自动限制</div>
+              <div class="panel-sub">超标后限制到指定通道</div>
+            </div>
+            <label class="switch" title="自动限制">
+              <input type="checkbox" id="auto-limit-toggle" onchange="updateAutoLimit()">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="field-row">
+            <label for="auto-limit-down">下载触发 MB</label>
+            <input type="number" id="auto-limit-down" value="3000" onchange="updateAutoLimit()">
+          </div>
+          <div class="field-row">
+            <label for="auto-limit-up">上传触发 MB</label>
+            <input type="number" id="auto-limit-up" value="1000" onchange="updateAutoLimit()">
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-title">白名单</div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:10px;">
+            <input type="text" id="new-whitelist-ip" placeholder="192.168.20.100">
+            <button class="btn btn-primary btn-sm" onclick="addWhitelist()">添加</button>
+          </div>
+          <div class="whitelist" id="whitelist-container"></div>
+        </div>
+
+      </aside>
+
+      <section class="panel detail-panel">
+        <div class="detail-toolbar">
+          <div class="detail-toolbar-head">
+            <div>
+              <div class="panel-title"><span></span><span id="panel-title">流量明细</span></div>
+              <div class="panel-sub" id="panel-subtitle">可按通道查看实时排行</div>
+            </div>
+            <div class="query-tools" aria-label="查询工具">
+              <label class="query-group" for="query-scope">
+                <span>范围</span>
+                <select id="query-scope" onchange="handleQueryScopeChange()">
+                  <option value="traffic">流量明细</option>
+                  <option value="arp">ARP绑定</option>
+                </select>
+              </label>
+              <label class="query-group" for="query-field">
+                <span>关键字</span>
+                <select id="query-field">
+                  <option value="ip">IP地址</option>
+                  <option value="mac">MAC地址</option>
+                  <option value="name">员工名称</option>
+                </select>
+              </label>
+              <input type="text" id="query-input" class="query-input" placeholder="输入 IP、MAC 或员工名称" onkeydown="handleQueryKeydown(event)">
+              <button class="btn btn-primary btn-sm" onclick="submitQuery()">查询</button>
+              <button class="btn btn-sm" onclick="resetQuery()">重置</button>
+              <span id="query-count-pill" class="query-chip">命中 <strong>0</strong> 条</span>
+              <span id="query-source-pill" class="query-chip" style="display:none;">来源 <strong>H3C home.asp</strong></span>
+            </div>
+          </div>
+          <div class="tabs">
+            <button class="tab active" id="tab-staff" onclick="switchTab('staff')">员工内网</button>
+            <button class="tab" id="tab-staff24" onclick="switchTab('staff24')">员工内网24小时</button>
+            <button class="tab" id="tab-src" onclick="switchTab('src')">外部源</button>
+            <button class="tab" id="tab-dst" onclick="switchTab('dst')">目的地址</button>
+            <button class="tab" id="tab-pbr" onclick="switchTab('pbr')">PBR 规则</button>
+          </div>
+        </div>
+
+        <div class="detail-table-wrap" id="traffic-panel">
+          <table>
+            <thead id="table-head">
+              <tr>
+                <th>#</th>
+                <th>IP 地址</th>
+                <th>员工名称</th>
+                <th>MAC 地址</th>
+                <th>通道</th>
+                <th>ISP / 归属地</th>
+                <th class="right">下载 MB</th>
+                <th class="bar-cell">下载占比</th>
+                <th class="right">上传 MB</th>
+                <th class="bar-cell">上传占比</th>
+                <th class="right">总量 MB</th>
+                <th>状态</th>
+                <th class="center">绑定状态</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+
+        <div class="detail-table-wrap" id="pbr-panel" style="display:none;">
+          <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 0;">
+            <button class="btn btn-primary btn-sm" onclick="showAddPbrModal()">添加限制</button>
+            <button class="btn btn-sm" onclick="loadPbrRules()">刷新规则</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>规则名称</th>
+                <th>源地址</th>
+                <th>协议</th>
+                <th>目标地址</th>
+                <th>接口</th>
+                <th class="center">操作</th>
+              </tr>
+            </thead>
+            <tbody id="pbr-table-body"></tbody>
+          </table>
+          <div id="pbr-empty" class="empty" style="display:none;">暂无通道限制规则</div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="pbr-modal" class="modal">
+    <div class="modal-card">
+      <h3>添加通道限制规则</h3>
+      <div class="form-group">
+        <label for="pbr-name">规则名称</label>
+        <input type="text" id="pbr-name" placeholder="t0_249">
+      </div>
+      <div class="form-group">
+        <label for="pbr-src-ip">源地址</label>
+        <input type="text" id="pbr-src-ip" placeholder="192.168.20.100/32">
+      </div>
+      <div class="form-group">
+        <label for="pbr-interface">接口</label>
+        <select id="pbr-interface">
+          <option value="wan">wan - 国内带宽</option>
+          <option value="vpn">vpn - VPN 海外通道</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="pbr-proto">协议</label>
+        <select id="pbr-proto">
+          <option value="all">all</option>
+          <option value="tcp">tcp</option>
+          <option value="udp">udp</option>
+          <option value="any">any</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+        <button class="btn" onclick="hideAddPbrModal()">取消</button>
+        <button class="btn btn-primary" onclick="submitAddPbr()">确认添加</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="binding-modal" class="modal">
+    <div class="modal-card">
+      <h3>绑定员工信息</h3>
+      <div class="form-group">
+        <label for="bind-ip">IP 地址</label>
+        <input type="text" id="bind-ip" placeholder="192.168.20.100">
+      </div>
+      <div class="form-group">
+        <label for="bind-mac">MAC 地址</label>
+        <input type="text" id="bind-mac" placeholder="AA:BB:CC:DD:EE:FF">
+      </div>
+      <div class="form-group">
+        <label for="bind-name">员工姓名</label>
+        <input type="text" id="bind-name" placeholder="例如：设计-小王">
+      </div>
+      <div class="panel-sub">确认后会保存 IP、MAC、员工姓名，并尝试同步到 H3C ARP 绑定表描述。</div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+        <button class="btn" onclick="hideBindingModal()">取消</button>
+        <button class="btn btn-primary" onclick="submitBindingModal()">确认绑定</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ip-detail-modal" class="modal">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-title-row">
+        <div>
+          <h3 id="ip-detail-title">IP 访问明细</h3>
+          <div id="ip-detail-source" class="ip-detail-source">-</div>
+        </div>
+        <button class="btn btn-sm" onclick="hideIpDetailModal()">关闭</button>
+      </div>
+      <div class="ip-detail-table-wrap">
+        <table class="ip-detail-table">
+          <thead>
+            <tr>
+              <th>地址</th>
+              <th>访问识别</th>
+              <th>协议</th>
+              <th>端口</th>
+              <th class="right">upload(MB)</th>
+              <th class="right">download(MB)</th>
+              <th class="right">total traffic(MB)</th>
+            </tr>
+          </thead>
+          <tbody id="ip-detail-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.origin;
+    let currentTab = "staff";
+    let rowsByTab = { src: [], staff: [], staff24: [], dst: [] };
+    let currentRows = [];
+    let whitelist = [];
+    let ipGeoCache = {};
+    let alerts = [];
+    let autoEvents = [];
+    let historyRows = [];
+    let pbrRules = [];
+    let employeeNames = {};
+    let macBindings = { items: [], by_mac: {}, by_ip: {} };
+    let queryState = {
+      scope: "traffic",
+      field: "ip",
+      keyword: "",
+      arpRows: [],
+      arpSourcePage: "http://192.168.20.1/home.asp",
+      arpUpdatedAt: "",
+      arpLoading: false,
+      arpError: "",
+    };
+    let configState = {};
+    let lastStats = {};
+    let ipDetailRequestToken = 0;
+    let wanBandwidthState = {
+      points: [],
+      stats: null,
+      fetched_at: "",
+      error: "",
+    };
+
+    function el(id) { return document.getElementById(id); }
+
+    function showToast(msg, type = "success") {
+      const box = el("toast");
+      box.textContent = msg;
+      box.className = `toast toast-${type} show`;
+      setTimeout(() => { box.className = "toast"; }, 3000);
+    }
+
+    function setConnStatus(status, text) {
+      const box = el("conn-status");
+      const cls = status === "ok" ? "pill pill-ok" : status === "err" ? "pill pill-danger" : "pill pill-warn";
+      box.className = cls;
+      box.innerHTML = `<span class="dot"></span>${escapeHtml(text)}`;
+    }
+
+    async function apiGet(path) {
+      const resp = await fetch(API + path);
+      if (!resp.ok) throw new Error(await readApiError(resp));
+      return resp.json();
+    }
+
+    async function apiPost(path, body = {}) {
+      const resp = await fetch(API + path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (!resp.ok) throw new Error(await readApiError(resp));
+      return resp.json();
+    }
+
+    async function readApiError(resp) {
+      try {
+        const data = await resp.json();
+        return data.message || data.error || `HTTP ${resp.status}`;
+      } catch (error) {
+        return `HTTP ${resp.status}`;
+      }
+    }
+
+    function isStaffTab(tab = currentTab) {
+      return tab === "staff" || tab === "staff24";
+    }
+
+    function renderIpTag(ip, period = "realtime") {
+      const value = String(ip || "-");
+      if (!ip || value === "-") return `<span class="ip-tag">-</span>`;
+      return `<button type="button" class="ip-tag ip-tag-button" title="查看 ${escapeAttr(value)} 访问明细" onclick="showIpDetail('${escapeAttr(value)}', '${escapeAttr(period)}')">${escapeHtml(value)}</button>`;
+    }
+
+    async function showIpDetail(ip, period = "realtime") {
+      if (!ip) return;
+      const requestToken = ++ipDetailRequestToken;
+      const is24h = period === "24h";
+      el("ip-detail-modal").style.display = "flex";
+      el("ip-detail-title").textContent = `${ip} ${is24h ? "24小时访问明细" : "访问明细"}`;
+      el("ip-detail-source").textContent = "正在从网关加载...";
+      el("ip-detail-body").innerHTML = emptyRow(7, "正在加载访问明细");
+
+      try {
+        const params = new URLSearchParams({ t: Date.now(), period });
+        const res = await apiGet(`/api/ip-detail/${encodeURIComponent(ip)}?${params.toString()}`);
+        if (requestToken !== ipDetailRequestToken) return;
+        const fetchedAt = res.fetched_at ? ` · 本次拉取 ${escapeHtml(res.fetched_at)}` : "";
+        el("ip-detail-source").innerHTML = `${escapeHtml(res.source_url || "-")}${fetchedAt}`;
+        renderIpDetailRows(res.rows || []);
+      } catch (error) {
+        if (requestToken !== ipDetailRequestToken) return;
+        el("ip-detail-source").textContent = "-";
+        el("ip-detail-body").innerHTML = emptyRow(7, error.message || "访问明细加载失败");
+      }
+    }
+
+    function hideIpDetailModal() {
+      ipDetailRequestToken += 1;
+      el("ip-detail-modal").style.display = "none";
+      el("ip-detail-title").textContent = "IP 访问明细";
+      el("ip-detail-source").textContent = "-";
+      el("ip-detail-body").innerHTML = "";
+    }
+
+    function renderIpDetailRows(rows) {
+      el("ip-detail-body").innerHTML = rows.map(row => `
+        <tr>
+          <td>${escapeHtml(row.address || "-")}</td>
+          <td class="access-cell">${renderAccessInsight(row)}</td>
+          <td>${escapeHtml(row.protocol || "-")}</td>
+          <td>${escapeHtml(row.port || "-")}</td>
+          <td class="right">${fmtPlainNumber(row.upload_mb)}</td>
+          <td class="right">${fmtPlainNumber(row.download_mb)}</td>
+          <td class="right">${fmtPlainNumber(row.total_mb)}</td>
+        </tr>
+      `).join("") || emptyRow(7, "未读取到该 IP 的访问明细");
+    }
+
+    function renderAccessInsight(row) {
+      const type = row.access_type || "未知";
+      const statusClass = row.is_video ? "status-warning" : (type === "未知" ? "status-warning" : "status-ok");
+      const name = row.access_name || "未识别网站";
+      const note = row.access_note || "仅按 IP/端口/流量特征判断";
+      return `
+        <span class="status ${statusClass}">${escapeHtml(type)}</span>
+        <div class="access-main" title="${escapeAttr(name)}">${escapeHtml(name)}</div>
+        <div class="access-note" title="${escapeAttr(note)}">${escapeHtml(note)}</div>
+      `;
+    }
+
+    async function loadData() {
+      try {
+        setConnStatus("loading", "采集中");
+        const [srcRes, staffRes, staff24Res, dstRes, statsRes, alertsRes, rulesRes, configRes, eventsRes, historyRes, pbrRes, macRes] = await Promise.all([
+          apiGet("/api/data?tab=src"),
+          apiGet("/api/data?tab=staff"),
+          apiGet("/api/data?tab=staff24"),
+          apiGet("/api/data?tab=dst"),
+          apiGet("/api/stats"),
+          apiGet("/api/alerts"),
+          apiGet("/api/rules"),
+          apiGet("/api/config"),
+          apiGet("/api/auto_limit/events"),
+          apiGet("/api/history"),
+          apiGet("/api/pbr/rules").catch(() => ({ rules: [] })),
+          apiGet("/api/mac-bindings").catch(() => ({ items: [], by_mac: {}, by_ip: {} }))
+        ]);
+
+        rowsByTab = {
+          src: srcRes.rows || [],
+          staff: staffRes.rows || [],
+          staff24: staff24Res.rows || [],
+          dst: dstRes.rows || []
+        };
+        currentRows = rowsByTab[currentTab] || [];
+        whitelist = staffRes.whitelist || srcRes.whitelist || rulesRes.whitelist || [];
+        ipGeoCache = { ...(srcRes.ip_geo || {}), ...(staffRes.ip_geo || {}), ...(staff24Res.ip_geo || {}), ...(dstRes.ip_geo || {}) };
+        employeeNames = staffRes.employee_names || {};
+        macBindings = macRes || staffRes.mac_bindings || { items: [], by_mac: {}, by_ip: {} };
+        alerts = alertsRes.alerts || [];
+        autoEvents = eventsRes.events || [];
+        historyRows = historyRes.history || [];
+        pbrRules = pbrRes.rules || [];
+        configState = configRes || {};
+        lastStats = statsRes || {};
+
+        if (srcRes.error || staffRes.error || staff24Res.error || dstRes.error || statsRes.error) {
+          setConnStatus("err", `采集异常`);
+        } else {
+          setConnStatus("ok", "采集正常");
+        }
+
+        renderConfig(srcRes, configRes);
+        renderStats(statsRes);
+        renderEvents();
+        renderDetailTable();
+        renderWhitelist();
+        renderMacBindings();
+        renderPbrTable();
+        syncQueryUi();
+        drawAllCanvases();
+      } catch (error) {
+        setConnStatus("err", "连接失败");
+        console.error(error);
+      }
+    }
+
+    async function loadWanBandwidth() {
+      try {
+        const res = await apiGet(`/api/wan-bandwidth?dev=tun0&t=${Date.now()}`);
+        wanBandwidthState = {
+          points: res.points || [],
+          stats: res.stats || null,
+          fetched_at: res.fetched_at || "",
+          error: "",
+        };
+      } catch (error) {
+        wanBandwidthState.error = error.message || "外网流量读取失败";
+      }
+      renderWanBandwidth();
+      drawAllCanvases();
+    }
+
+    function renderWanBandwidth() {
+      const timeText = wanBandwidthState.error
+        ? `读取失败：${wanBandwidthState.error}`
+        : (wanBandwidthState.fetched_at ? `本次拉取 ${wanBandwidthState.fetched_at}` : "等待数据");
+      el("wan-bandwidth-time").textContent = timeText;
+
+      const rx = (wanBandwidthState.stats && wanBandwidthState.stats.rx) || {};
+      const tx = (wanBandwidthState.stats && wanBandwidthState.stats.tx) || {};
+      el("wan-rx-current").textContent = formatBandwidthRate(rx.current);
+      el("wan-rx-avg").textContent = formatBandwidthRate(rx.avg);
+      el("wan-rx-peak").textContent = formatBandwidthRate(rx.peak);
+      el("wan-tx-current").textContent = formatBandwidthRate(tx.current);
+      el("wan-tx-avg").textContent = formatBandwidthRate(tx.avg);
+      el("wan-tx-peak").textContent = formatBandwidthRate(tx.peak);
+    }
+
+    function renderConfig(dataRes, configRes) {
+      const scrapedAt = dataRes.scraped_at || lastStats.scraped_at || "";
+      el("scrape-time").innerHTML = `更新时间 <strong>${scrapedAt || "-"}</strong>`;
+      el("gateway-pill").innerHTML = `网关 <strong>${escapeHtml(configRes.gateway_url || "-")}</strong>`;
+      el("auto-pill").className = configRes.auto_limit_enabled ? "pill pill-cyan" : "pill";
+      el("auto-pill").innerHTML = `自动限制 <strong>${configRes.auto_limit_enabled ? "ON" : "OFF"}</strong>`;
+
+      if (dataRes.threshold_down !== undefined) el("threshold-down").value = dataRes.threshold_down;
+      if (dataRes.threshold_up !== undefined) el("threshold-up").value = dataRes.threshold_up;
+      if (configRes.auto_limit_enabled !== undefined) el("auto-limit-toggle").checked = configRes.auto_limit_enabled;
+      if (configRes.auto_limit_threshold_down !== undefined) el("auto-limit-down").value = configRes.auto_limit_threshold_down;
+      if (configRes.auto_limit_threshold_up !== undefined) el("auto-limit-up").value = configRes.auto_limit_threshold_up;
+    }
+
+    function renderStats(s) {
+      el("stat-ip-count").textContent = s.ip_count || 0;
+      el("stat-total-down").textContent = fixed(s.total_down_gb || 0, 2);
+      el("stat-total-up").textContent = fixed(s.total_up_gb || 0, 2);
+      el("stat-peak-down-ip").textContent = s.peak_down_ip || "-";
+      el("stat-peak-up-ip").textContent = s.peak_up_ip || "-";
+      el("stat-alerts").textContent = s.alert_count || 0;
+      el("stat-limit-suggest").textContent = s.limit_suggest_count || 0;
+      el("stat-staff-count").textContent = rowsByTab.staff.length || 0;
+      el("stat-pbr-count").textContent = pbrRules.length || 0;
+    }
+
+    function renderEvents() {
+      const box = el("event-list");
+      const count = el("event-count");
+      if (!box || !count) return;
+      const merged = [];
+      alerts.forEach(item => {
+        merged.push({
+          level: item.level === "danger" ? "danger" : "warn",
+          title: item.ip || "未知 IP",
+          meta: `${item.msg || "流量异常"} · ${item.time || lastStats.scraped_at || "-"}`
+        });
+      });
+      autoEvents.forEach(item => {
+        merged.push({
+          level: item.action === "release" ? "ok" : "danger",
+          title: item.ip || "自动限制事件",
+          meta: `${item.action === "release" ? "解除限制" : "自动限制"} · ${item.time || item.message || "-"}`
+        });
+      });
+
+      count.textContent = merged.length;
+      if (merged.length === 0) {
+        box.innerHTML = `<div class="event-item ok"><i></i><div class="event-main"><div class="event-title">当前没有告警事件</div><div class="event-meta">系统处于正常监控状态</div></div></div>`;
+        return;
+      }
+
+      box.innerHTML = merged.slice(0, 12).map(item => `
+        <div class="event-item ${item.level}">
+          <i></i>
+          <div class="event-main">
+            <div class="event-title" title="${escapeAttr(item.title)}">${escapeHtml(item.title)}</div>
+            <div class="event-meta">${escapeHtml(item.meta || "-")}</div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderDetailTable() {
+      if (currentTab === "pbr") {
+        syncQueryStatus();
+        return;
+      }
+      if (queryState.scope === "arp") {
+        renderArpQueryTable();
+      } else {
+        renderTrafficTable();
+      }
+      syncQueryStatus();
+    }
+
+    function renderTrafficTable() {
+      const head = el("table-head");
+      const tbody = el("table-body");
+      const keyword = queryState.keyword.trim();
+      const field = queryState.field;
+      const baseRows = rowsByTab[currentTab] || [];
+      const filtered = keyword ? baseRows.filter(row => matchesTrafficQuery(row, field, keyword)) : baseRows.slice();
+      const data = topRows(filtered, 200);
+      const maxDown = Math.max(...data.map(row => row.down || 0), 1);
+      const maxUp = Math.max(...data.map(row => row.up || 0), 1);
+      const queryActive = Boolean(keyword);
+
+      if (head) {
+        head.innerHTML = `
+          <tr>
+            <th>#</th>
+            <th>IP 地址</th>
+            <th>员工名称</th>
+            <th>MAC 地址</th>
+            <th>通道</th>
+            <th>ISP / 归属地</th>
+            <th class="right">下载 MB</th>
+            <th class="bar-cell">下载占比</th>
+            <th class="right">上传 MB</th>
+            <th class="bar-cell">上传占比</th>
+            <th class="right">总量 MB</th>
+            <th>状态</th>
+            <th class="center">绑定状态</th>
+          </tr>
+        `;
+      }
+
+      tbody.innerHTML = data.map((row, idx) => {
+        const status = getStatus(row);
+        const geo = ipGeoCache[row.ip] || {};
+        const isp = geo.isp || geo.org || "-";
+        const country = geo.country || "";
+        const geoText = country && isp !== "-" ? `${country} / ${isp}` : (country || isp);
+        const downPct = Math.max(2, ((row.down || 0) / maxDown) * 100);
+        const upPct = Math.max(2, ((row.up || 0) / maxUp) * 100);
+        const employee = isStaffTab() ? getEmployeeName(row.ip) : "";
+        const mac = getRowMac(row.ip);
+        const total = (row.down || 0) + (row.up || 0);
+        const bindingLabel = employee ? "已绑定" : "未绑定";
+        const bindingClass = employee ? "status-ok" : "status-warning";
+        const detailPeriod = currentTab === "staff24" ? "24h" : "realtime";
+        return `<tr class="${queryActive ? "query-hit-row" : ""}">
+          <td>${idx + 1}</td>
+          <td>${renderIpTag(row.ip, detailPeriod)}</td>
+          <td title="${escapeAttr(employee || "-")}"><span class="${employee ? "employee-name" : "employee-muted"}">${escapeHtml(employee || "-")}</span></td>
+          <td>${mac ? `<span class="mac-tag" title="${escapeAttr(mac)}">${escapeHtml(mac)}</span>` : `<span class="employee-muted">-</span>`}</td>
+          <td>${routeTag(row.route)}</td>
+          <td title="${escapeAttr(geoText)}" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);">${escapeHtml(geoText || "-")}</td>
+          <td class="right">${fmtNum(row.down || 0)}</td>
+          <td class="bar-cell"><div class="bar"><span style="width:${downPct}%"></span></div></td>
+          <td class="right">${fmtNum(row.up || 0)}</td>
+          <td class="bar-cell"><div class="bar"><span style="width:${upPct}%;background:linear-gradient(90deg,var(--blue),var(--cyan));"></span></div></td>
+          <td class="right rank-total">${fmtNum(total)}</td>
+          <td><span class="status ${status.class}">${status.label}</span></td>
+          <td class="center">${isStaffTab() ? `<span class="inline-actions"><span class="status ${bindingClass}">${bindingLabel}</span><button class="btn btn-warn btn-sm" onclick="quickLimitPbr('${escapeAttr(row.ip || "")}')">限制</button></span>` : ""}</td>
+        </tr>`;
+      }).join("") || emptyRow(13, queryActive ? "未找到匹配的流量记录" : "等待数据");
+    }
+
+    function renderArpQueryTable() {
+      const head = el("table-head");
+      const tbody = el("table-body");
+      const keyword = queryState.keyword.trim();
+      const field = queryState.field;
+      const rows = queryState.arpRows || [];
+      const filtered = keyword ? rows.filter(item => matchesArpQuery(item, field, keyword)) : rows.slice();
+
+      if (head) {
+        head.innerHTML = `
+          <tr>
+            <th>#</th>
+            <th>IP 地址</th>
+            <th>MAC 地址</th>
+            <th>描述 / 员工姓名</th>
+            <th>状态</th>
+            <th>来源</th>
+          </tr>
+        `;
+      }
+
+      tbody.innerHTML = filtered.map((item, idx) => {
+        const canBind = item.ip && item.mac && item.status === "静态绑定";
+        const statusClass = item.status === "静态绑定" ? "status-ok" : "status-warning";
+        const statusText = escapeHtml(item.status || "-");
+        const statusCell = canBind
+          ? `<button type="button" class="status status-button ${statusClass}" title="绑定员工信息" onclick="prefillArpBinding('${escapeAttr(escapeJsString(item.ip))}', '${escapeAttr(escapeJsString(item.mac))}', '${escapeAttr(escapeJsString(item.name || ""))}')">${statusText}</button>`
+          : `<span class="status ${statusClass}">${statusText}</span>`;
+        return `
+          <tr class="query-hit-row">
+            <td>${idx + 1}</td>
+            <td>${renderIpTag(item.ip)}</td>
+            <td><span class="mac-tag">${escapeHtml(item.mac || "-")}</span></td>
+            <td><span class="employee-name" title="${escapeAttr(item.name || "-")}">${escapeHtml(item.name || "-")}</span></td>
+            <td>${statusCell}</td>
+            <td class="employee-muted">H3C home.asp</td>
+          </tr>
+        `;
+      }).join("") || emptyRow(6, keyword ? "未找到匹配的 ARP 绑定" : "请点击查询加载 ARP 绑定");
+    }
+
+    function matchesTrafficQuery(row, field, keyword) {
+      const q = normalizeQuery(keyword);
+      if (!q) return true;
+      if (field === "mac") {
+        const normalized = normalizeMac(q);
+        return normalized
+          ? normalizeMac(getRowMac(row.ip)).includes(normalized)
+          : String(getRowMac(row.ip) || "").toLowerCase().includes(q.toLowerCase());
+      }
+      if (field === "name") {
+        if (!isStaffTab()) return false;
+        return String(getEmployeeName(row.ip) || "").toLowerCase().includes(q.toLowerCase());
+      }
+      return String(row.ip || "").toLowerCase().includes(q.toLowerCase());
+    }
+
+    function matchesArpQuery(item, field, keyword) {
+      const q = normalizeQuery(keyword);
+      if (!q) return true;
+      if (field === "mac") {
+        const normalized = normalizeMac(q);
+        return normalized
+          ? normalizeMac(item.mac || "").includes(normalized)
+          : String(item.mac || "").toLowerCase().includes(q.toLowerCase());
+      }
+      if (field === "name") {
+        return String(item.name || "").toLowerCase().includes(q.toLowerCase());
+      }
+      return String(item.ip || "").toLowerCase().includes(q.toLowerCase());
+    }
+
+    function normalizeQuery(value) {
+      return String(value || "").trim();
+    }
+
+    function renderWhitelist() {
+      const box = el("whitelist-container");
+      if (!whitelist.length) {
+        box.innerHTML = `<span class="panel-sub">暂无白名单</span>`;
+        return;
+      }
+      box.innerHTML = whitelist.map(ip => `
+        <span class="whitelist-item">
+          <span class="ip-tag">${escapeHtml(ip)}</span>
+          <button class="btn btn-sm" onclick="removeWhitelist('${escapeAttr(ip)}')">删除</button>
+        </span>
+      `).join("");
+    }
+
+    function renderMacBindings() {
+      const box = el("mac-binding-list");
+      if (!box) return;
+      const items = macBindings.items || [];
+      if (!items.length) {
+        box.innerHTML = `<span class="panel-sub">暂无绑定信息</span>`;
+        return;
+      }
+      box.innerHTML = items.slice(0, 12).map(item => `
+        <div class="binding-item">
+          <div>
+            <div class="binding-name" title="${escapeAttr(item.name || "")}">${escapeHtml(item.name || "-")}</div>
+            <div class="employee-muted">${escapeHtml(item.ip || "-")} · ${escapeHtml(item.mac || "-")}</div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="deleteMacBinding('${escapeAttr(item.id || item.mac || `ip:${item.ip}`)}')">删除</button>
+        </div>
+      `).join("");
+    }
+
+    function syncQueryUi() {
+      const scope = el("query-scope");
+      const field = el("query-field");
+      const input = el("query-input");
+      if (scope) scope.value = queryState.scope;
+      if (field) field.value = queryState.field;
+      if (input && input.value !== queryState.keyword) input.value = queryState.keyword;
+
+      const sourcePill = el("query-source-pill");
+      if (sourcePill) {
+        sourcePill.style.display = queryState.scope === "arp" ? "inline-flex" : "none";
+      }
+    }
+
+    function syncQueryStatus() {
+      const pill = el("query-count-pill");
+      const sourcePill = el("query-source-pill");
+      const subtitle = el("panel-subtitle");
+      const title = el("panel-title");
+      const count = getCurrentQueryCount();
+
+      if (pill) pill.innerHTML = `命中 <strong>${count}</strong> 条`;
+      if (sourcePill) sourcePill.style.display = queryState.scope === "arp" ? "inline-flex" : "none";
+
+      if (currentTab === "pbr") {
+        if (title) title.textContent = "PBR 通道限制";
+        if (subtitle) subtitle.textContent = "规则直接作用于网关策略路由";
+        return;
+      }
+
+      if (queryState.scope === "arp") {
+        if (title) title.textContent = "ARP 绑定查询";
+        if (subtitle) subtitle.textContent = queryState.arpLoading
+          ? `来源 ${queryState.arpSourcePage || "http://192.168.20.1/home.asp"} · 查询中...`
+          : `来源 ${queryState.arpSourcePage || "http://192.168.20.1/home.asp"} · ${queryState.keyword ? `命中 ${count} 条` : "输入关键字后点击查询"}`;
+        return;
+      }
+
+      if (title) {
+        title.textContent = currentTab === "staff"
+          ? "员工内网明细"
+          : currentTab === "staff24"
+            ? "员工内网24小时明细"
+            : currentTab === "src"
+              ? "外部源明细"
+              : "目的地址明细";
+      }
+      if (subtitle) {
+        subtitle.textContent = queryState.keyword
+          ? `IP / MAC 过滤 · 命中 ${count} 条`
+          : "按下载与上传总量排序";
+      }
+    }
+
+    function getCurrentQueryCount() {
+      if (queryState.scope === "arp") {
+        const keyword = queryState.keyword.trim();
+        return keyword ? queryState.arpRows.filter(item => matchesArpQuery(item, queryState.field, keyword)).length : queryState.arpRows.length;
+      }
+      const baseRows = rowsByTab[currentTab] || [];
+      const keyword = queryState.keyword.trim();
+      return keyword ? baseRows.filter(row => matchesTrafficQuery(row, queryState.field, keyword)).length : baseRows.length;
+    }
+
+    function handleQueryScopeChange() {
+      queryState.scope = el("query-scope").value;
+      syncQueryUi();
+      if (queryState.scope === "arp" && queryState.keyword.trim()) {
+        loadArpBindingsForQuery();
+        return;
+      }
+      renderDetailTable();
+    }
+
+    function handleQueryKeydown(event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        submitQuery();
+      }
+    }
+
+    async function submitQuery() {
+      queryState.scope = el("query-scope").value;
+      queryState.field = el("query-field").value;
+      queryState.keyword = el("query-input").value.trim();
+      syncQueryUi();
+
+      if (queryState.scope === "arp") {
+        await loadArpBindingsForQuery();
+      } else {
+        queryState.arpRows = [];
+        queryState.arpError = "";
+        renderDetailTable();
+        showToast(queryState.keyword ? `已筛选 ${getCurrentQueryCount()} 条` : "已恢复流量明细");
+      }
+    }
+
+    function resetQuery() {
+      queryState.scope = "traffic";
+      queryState.field = "ip";
+      queryState.keyword = "";
+      queryState.arpRows = [];
+      queryState.arpError = "";
+      queryState.arpLoading = false;
+      syncQueryUi();
+      renderDetailTable();
+      showToast("查询条件已重置");
+    }
+
+    async function loadArpBindingsForQuery() {
+      const keyword = queryState.keyword;
+      const field = queryState.field;
+      queryState.arpLoading = true;
+      queryState.arpError = "";
+      syncQueryStatus();
+      try {
+        const params = new URLSearchParams({
+          field,
+          q: keyword,
+          refresh: "1",
+        });
+        const res = await apiGet(`/api/h3c/arp-bindings?${params.toString()}`);
+        if (!res.success) throw new Error(res.message || "ARP 查询失败");
+        queryState.arpRows = res.items || [];
+        queryState.arpSourcePage = res.source_page || "http://192.168.20.1/home.asp";
+        queryState.arpUpdatedAt = res.updated_at || "";
+        queryState.arpLoading = false;
+        syncQueryUi();
+        renderDetailTable();
+      } catch (error) {
+        queryState.arpRows = [];
+        queryState.arpLoading = false;
+        queryState.arpError = error.message;
+        syncQueryUi();
+        renderDetailTable();
+        showToast(`ARP 查询失败: ${error.message}`, "error");
+      }
+    }
+
+    async function submitBindingModal() {
+      const name = el("bind-name").value.trim();
+      const mac = normalizeMac(el("bind-mac").value.trim());
+      const ip = el("bind-ip").value.trim();
+      await saveBindingRecord({ ip, mac, name, closeModal: true });
+    }
+
+    async function saveBindingRecord({ ip, mac, name, closeModal = false }) {
+      if (!name) { showToast("员工姓名不能为空", "error"); return; }
+      if (!mac && !ip) { showToast("请至少填写 IP 或 MAC 地址", "error"); return; }
+      try {
+        const res = await apiPost("/api/mac-bindings", { name, mac, ip });
+        macBindings = res;
+        if (res.employee_names) employeeNames = res.employee_names;
+        if (closeModal) hideBindingModal();
+        renderMacBindings();
+        renderDetailTable();
+        showToast(res.h3c_synced ? (res.message || "已同步到 H3C ARP 绑定表") : `已保存本地绑定，H3C 未确认: ${res.message || "未同步 H3C"}`, res.h3c_synced ? "success" : "warn");
+        loadData().catch(error => console.warn("绑定后刷新失败", error));
+      } catch (error) {
+        showToast(`保存失败: ${error.message}`, "error");
+      }
+    }
+
+    async function deleteMacBinding(bindingId) {
+      const id = normalizeMac(bindingId) || bindingId;
+      if (!id) return;
+      try {
+        const res = await apiPost(`/api/mac-bindings/${encodeURIComponent(id)}`);
+        macBindings = res;
+        renderMacBindings();
+        renderDetailTable();
+        showToast("绑定信息已删除");
+      } catch (error) {
+        showToast(`删除失败: ${error.message}`, "error");
+      }
+    }
+
+    function prefillMacBinding(ip) {
+      const mac = getDeviceMac(ip);
+      const currentName = getEmployeeName(ip);
+      el("bind-ip").value = ip || "";
+      el("bind-mac").value = mac || "";
+      el("bind-name").value = currentName || "";
+      showBindingModal();
+      showToast(mac ? "已带入 IP 和 MAC" : "已带入 IP，可手动填写 MAC", mac ? "success" : "warn");
+    }
+
+    function prefillArpBinding(ip, mac, name) {
+      el("bind-ip").value = ip || "";
+      el("bind-mac").value = normalizeMac(mac) || mac || "";
+      el("bind-name").value = name || "";
+      showBindingModal();
+      showToast("已从 ARP 绑定带入员工信息", "success");
+    }
+
+    function showBindingModal() { el("binding-modal").style.display = "flex"; }
+    function hideBindingModal() { el("binding-modal").style.display = "none"; }
+
+    function renderPbrTable() {
+      const tbody = el("pbr-table-body");
+      const empty = el("pbr-empty");
+      if (!pbrRules.length) {
+        tbody.innerHTML = "";
+        empty.style.display = "block";
+        return;
+      }
+      empty.style.display = "none";
+      tbody.innerHTML = pbrRules.map(rule => {
+        const isWan = rule.interface === "wan";
+        const isAuto = (rule.name || "").endsWith("_auto");
+        return `<tr>
+          <td><b>${escapeHtml(rule.name || "-")}</b> ${isAuto ? '<span class="status status-ok">系统</span>' : ""}</td>
+          <td><span class="ip-tag">${escapeHtml(rule.src_ip || "-")}</span></td>
+          <td>${escapeHtml(rule.proto || "-")}</td>
+          <td>${escapeHtml(rule.dst_ip || "0.0.0.0/0")}</td>
+          <td>${routeTag(isWan ? "WAN" : "VPN")}</td>
+          <td class="center" style="white-space:nowrap;">
+            <button class="btn btn-sm" onclick="switchPbrInterface('${escapeAttr(rule.name || "")}', '${isWan ? "vpn" : "wan"}')">切${isWan ? "VPN" : "WAN"}</button>
+            <button class="btn btn-danger btn-sm" onclick="deletePbrRule('${escapeAttr(rule.name || "")}')">解除</button>
+          </td>
+        </tr>`;
+      }).join("");
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      ["staff", "staff24", "src", "dst", "pbr"].forEach(name => el(`tab-${name}`).classList.toggle("active", tab === name));
+      const isPbr = tab === "pbr";
+      el("traffic-panel").style.display = isPbr ? "none" : "block";
+      el("pbr-panel").style.display = isPbr ? "block" : "none";
+      el("panel-title").textContent = isPbr
+        ? "PBR 通道限制"
+        : tab === "staff"
+          ? "员工内网明细"
+          : tab === "staff24"
+            ? "员工内网24小时明细"
+            : tab === "src"
+              ? "外部源明细"
+              : "目的地址明细";
+      el("panel-subtitle").textContent = isPbr ? "规则直接作用于网关策略路由" : "按下载与上传总量排序";
+      currentRows = rowsByTab[tab] || [];
+      if (isPbr) loadPbrRules();
+      renderDetailTable();
+      drawAllCanvases();
+    }
+
+    async function refreshData() {
+      const btn = el("btn-refresh");
+      btn.disabled = true;
+      btn.innerHTML = "采集中";
+      try {
+        const res = await apiPost("/api/scrape");
+        if (res.error) throw new Error(res.error);
+        await loadData();
+        showToast("数据已刷新");
+      } catch (error) {
+        showToast(`刷新失败: ${error.message}`, "error");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>刷新`;
+      }
+    }
+
+    async function updateThresholds() {
+      try {
+        await apiPost("/api/config", {
+          threshold_down_mb: +el("threshold-down").value,
+          threshold_up_mb: +el("threshold-up").value
+        });
+        renderDetailTable();
+        showToast("阈值已更新");
+      } catch (error) {
+        showToast(`阈值更新失败: ${error.message}`, "error");
+      }
+    }
+
+    async function updateAutoLimit() {
+      const enabled = el("auto-limit-toggle").checked;
+      try {
+        await apiPost("/api/config", {
+          auto_limit_enabled: enabled,
+          auto_limit_threshold_down_mb: +el("auto-limit-down").value,
+          auto_limit_threshold_up_mb: +el("auto-limit-up").value
+        });
+        el("auto-pill").className = enabled ? "pill pill-cyan" : "pill";
+        el("auto-pill").innerHTML = `自动限制 <strong>${enabled ? "ON" : "OFF"}</strong>`;
+        showToast(enabled ? "自动限制已开启" : "自动限制已关闭");
+      } catch (error) {
+        showToast(`自动限制保存失败: ${error.message}`, "error");
+      }
+    }
+
+    async function addWhitelist(ip) {
+      const input = el("new-whitelist-ip");
+      const nextIp = typeof ip === "string" ? ip : input.value.trim();
+      if (!nextIp) return;
+      if (!whitelist.includes(nextIp)) whitelist.push(nextIp);
+      input.value = "";
+      await saveRulesToServer();
+      renderWhitelist();
+      renderDetailTable();
+      showToast("白名单已更新");
+    }
+
+    async function removeWhitelist(ip) {
+      whitelist = whitelist.filter(item => item !== ip);
+      await saveRulesToServer();
+      renderWhitelist();
+      renderDetailTable();
+      showToast("白名单已更新");
+    }
+
+    async function saveRulesToServer() {
+      await apiPost("/api/rules", { whitelist });
+    }
+
+    async function loadPbrRules() {
+      try {
+        const res = await apiGet("/api/pbr/rules");
+        pbrRules = res.rules || [];
+        el("stat-pbr-count").textContent = pbrRules.length;
+        renderPbrTable();
+      } catch (error) {
+        showToast(`PBR 加载失败: ${error.message}`, "error");
+      }
+    }
+
+    function showAddPbrModal() { el("pbr-modal").style.display = "flex"; }
+    function hideAddPbrModal() { el("pbr-modal").style.display = "none"; }
+
+    async function submitAddPbr() {
+      const name = el("pbr-name").value.trim();
+      const srcIp = el("pbr-src-ip").value.trim();
+      if (!name) { showToast("规则名称不能为空", "error"); return; }
+      if (!srcIp) { showToast("源地址不能为空", "error"); return; }
+
+      try {
+        const res = await apiPost("/api/pbr/add", {
+          name,
+          src_ip: srcIp,
+          interface: el("pbr-interface").value,
+          proto: el("pbr-proto").value
+        });
+        if (!res.success) throw new Error(res.message || "添加失败");
+        showToast(res.message || "规则已添加");
+        hideAddPbrModal();
+        el("pbr-name").value = "";
+        el("pbr-src-ip").value = "";
+        await loadPbrRules();
+      } catch (error) {
+        showToast(`添加失败: ${error.message}`, "error");
+      }
+    }
+
+    async function quickLimitPbr(ip) {
+      if (!ip) return;
+      const lastOctet = ip.split(".").pop();
+      const name = `t0_${lastOctet}`;
+      const srcIp = ip.includes("/") ? ip : `${ip}/32`;
+      if (!confirm(`确定要限制 ${ip} 只允许走国内带宽 (wan) 吗？`)) return;
+      try {
+        const res = await apiPost("/api/pbr/add", { name, src_ip: srcIp, interface: "wan", proto: "all" });
+        if (!res.success) throw new Error(res.message || "限制失败");
+        showToast(`已限制 ${ip} 走国内带宽`);
+        await loadPbrRules();
+      } catch (error) {
+        showToast(`限制失败: ${error.message}`, "error");
+      }
+    }
+
+    async function deletePbrRule(ruleName) {
+      if (!ruleName || !confirm(`确定要解除规则 "${ruleName}" 吗？`)) return;
+      try {
+        const res = await apiPost(`/api/pbr/delete/${encodeURIComponent(ruleName)}`);
+        if (!res.success) throw new Error(res.message || "解除失败");
+        showToast(res.message || "规则已解除");
+        await loadPbrRules();
+      } catch (error) {
+        showToast(`解除失败: ${error.message}`, "error");
+      }
+    }
+
+    async function switchPbrInterface(ruleName, newIface) {
+      try {
+        const res = await apiPost("/api/pbr/switch", { rule_name: ruleName, interface: newIface });
+        if (!res.success) throw new Error(res.message || "切换失败");
+        showToast(res.message || "接口已切换");
+        await loadPbrRules();
+      } catch (error) {
+        showToast(`切换失败: ${error.message}`, "error");
+      }
+    }
+
+    function exportData() {
+      let csv = "\uFEFF";
+      if (queryState.scope === "arp") {
+        const data = queryState.keyword.trim()
+          ? queryState.arpRows.filter(item => matchesArpQuery(item, queryState.field, queryState.keyword))
+          : queryState.arpRows.slice();
+        csv += "排名,IP地址,MAC地址,描述/员工姓名,状态,来源\n";
+        data.forEach((row, idx) => {
+          csv += `${idx + 1},${row.ip || ""},${row.mac || ""},${row.name || ""},${row.status || ""},H3C home.asp\n`;
+        });
+      } else {
+        const baseRows = rowsByTab[currentTab] || [];
+        const data = topRows(queryState.keyword.trim()
+          ? baseRows.filter(row => matchesTrafficQuery(row, queryState.field, queryState.keyword))
+          : baseRows, baseRows.length);
+        csv += "排名,IP地址,员工名称,MAC地址,线路,下载流量(MB),上传流量(MB),总量(MB),状态\n";
+        data.forEach((row, idx) => {
+          const status = getStatus(row);
+          const employee = isStaffTab() ? getEmployeeName(row.ip) : "";
+          const mac = getRowMac(row.ip);
+          const total = (row.down || 0) + (row.up || 0);
+          csv += `${idx + 1},${row.ip || ""},${employee},${mac},${row.route || ""},${fixed(row.down || 0, 2)},${fixed(row.up || 0, 2)},${fixed(total, 2)},${status.label}\n`;
+        });
+      }
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `流量报表_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function drawAllCanvases() {
+      drawWanBandwidthCanvas();
+    }
+
+    function setupCanvas(canvas) {
+      if (!canvas || !canvas.parentElement) return null;
+      const ctx = canvas.getContext("2d");
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, rect.width * dpr);
+      canvas.height = Math.max(1, rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { ctx, w: rect.width, h: rect.height };
+    }
+
+    function drawWanBandwidthCanvas() {
+      const canvas = setupCanvas(el("wanBandwidthCanvas"));
+      if (!canvas) return;
+      const { ctx, w, h } = canvas;
+      ctx.clearRect(0, 0, w, h);
+      drawGrid(ctx, w, h);
+
+      const points = wanBandwidthState.points || [];
+      if (!points.length) {
+        ctx.fillStyle = "#89a2aa";
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(wanBandwidthState.error || "等待外网流量数据", w / 2, h / 2);
+        ctx.textAlign = "left";
+        return;
+      }
+
+      const rxValues = points.map(point => Number(point.rx_bytes_per_sec || 0));
+      const txValues = points.map(point => Number(point.tx_bytes_per_sec || 0));
+      const maxValue = Math.max(...rxValues, ...txValues, 1);
+      const pad = { l: 60, r: 20, t: 24, b: 30 };
+
+      drawBandwidthLine(ctx, rxValues, maxValue, pad, w, h, "#60a5fa", "rgba(96,165,250,0.2)");
+      drawBandwidthLine(ctx, txValues, maxValue, pad, w, h, "#4ade80", "rgba(74,222,128,0.16)");
+
+      ctx.strokeStyle = "rgba(137,162,170,0.2)";
+      ctx.lineWidth = 1;
+      [0, 1, 2, 3].forEach(idx => {
+        const x = pad.l + ((w - pad.l - pad.r) / 3) * idx;
+        ctx.beginPath();
+        ctx.moveTo(x, pad.t);
+        ctx.lineTo(x, h - pad.b);
+        ctx.stroke();
+      });
+
+      ctx.fillStyle = "#89a2aa";
+      ctx.font = "11px sans-serif";
+      ctx.fillText("3m", pad.l, 14);
+      ctx.fillText("2m", pad.l + (w - pad.l - pad.r) / 3, 14);
+      ctx.fillText("1m", pad.l + ((w - pad.l - pad.r) / 3) * 2, 14);
+      ctx.fillText(formatBitRate(maxValue), 8, pad.t + 5);
+      ctx.fillText(formatBitRate(maxValue / 2), 8, pad.t + (h - pad.t - pad.b) / 2);
+
+      drawLegend(ctx, w - 120, 13, "#60a5fa", "入站");
+      drawLegend(ctx, w - 120, 33, "#4ade80", "出站");
+    }
+
+    function drawBandwidthLine(ctx, values, maxValue, pad, w, h, color, fillColor) {
+      if (!values.length) return;
+      const innerW = w - pad.l - pad.r;
+      const innerH = h - pad.t - pad.b;
+      const pts = values.map((value, idx) => ({
+        x: pad.l + (idx / Math.max(values.length - 1, 1)) * innerW,
+        y: h - pad.b - (value / maxValue) * innerH
+      }));
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      pts.forEach((p, idx) => idx ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+      ctx.stroke();
+
+      ctx.lineTo(pts[pts.length - 1].x, h - pad.b);
+      ctx.lineTo(pts[0].x, h - pad.b);
+      ctx.closePath();
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+    }
+
+    function drawLegend(ctx, x, y, color, label) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, 22, 3);
+      ctx.fillStyle = "#89a2aa";
+      ctx.font = "11px sans-serif";
+      ctx.fillText(label, x + 32, y + 4);
+    }
+
+    function drawGrid(ctx, w, h) {
+      ctx.strokeStyle = "rgba(137,162,170,0.1)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= w; x += 42) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+      for (let y = 0; y <= h; y += 36) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+    }
+
+    function drawLine(ctx, values, maxValue, pad, w, h, color, fillColor) {
+      const innerW = w - pad.l - pad.r;
+      const innerH = h - pad.t - pad.b;
+      const pts = values.map((value, idx) => ({
+        x: pad.l + (idx / Math.max(values.length - 1, 1)) * innerW,
+        y: h - pad.b - (value / maxValue) * innerH
+      }));
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      pts.forEach((p, idx) => idx ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+      ctx.stroke();
+
+      ctx.lineTo(pts[pts.length - 1].x, h - pad.b);
+      ctx.lineTo(pts[0].x, h - pad.b);
+      ctx.closePath();
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+    }
+
+    function drawLink(ctx, a, b, color, weight) {
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.25 + Math.min(weight / 120, 0.45);
+      ctx.lineWidth = 2 + Math.min(weight / 32, 8);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.bezierCurveTo((a.x + b.x) / 2, a.y, (a.x + b.x) / 2, b.y, b.x, b.y);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    function drawNode(ctx, node) {
+      ctx.fillStyle = "rgba(7,16,20,0.84)";
+      ctx.strokeStyle = node.color;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, 28, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = node.color;
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#e7f5f7";
+      ctx.font = "700 12px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(node.label, node.x, node.y + 46);
+      ctx.fillStyle = "#89a2aa";
+      ctx.font = "11px sans-serif";
+      ctx.fillText(node.sub, node.x, node.y + 62);
+    }
+
+    function topRows(rows, count) {
+      return [...(rows || [])].sort((a, b) => ((b.down || 0) + (b.up || 0)) - ((a.down || 0) + (a.up || 0))).slice(0, count);
+    }
+
+    function getStatus(row) {
+      if (whitelist.includes(row.ip)) return { label: "白名单", class: "status-ok" };
+      const thDown = +el("threshold-down").value || 0;
+      const thUp = +el("threshold-up").value || 0;
+      if ((row.down || 0) > thDown && (row.up || 0) > thUp) return { label: "严重", class: "status-danger" };
+      if ((row.down || 0) > thDown) return { label: "下载", class: "status-danger" };
+      if ((row.up || 0) > thUp) return { label: "上传", class: "status-warning" };
+      return { label: "正常", class: "status-ok" };
+    }
+
+    function routeTag(route) {
+      const text = route || "-";
+      const upper = String(text).toUpperCase();
+      const cls = upper.includes("VPN") ? "route-vpn" : upper.includes("WAN") || upper.includes("CN") ? "route-cn" : "";
+      return `<span class="route-tag ${cls}">${escapeHtml(text)}</span>`;
+    }
+
+    function getEmployeeName(ip) {
+      const mac = getDeviceMac(ip);
+      const byMac = mac ? (macBindings.by_mac || {})[mac] : null;
+      const byIp = (macBindings.by_ip || {})[ip] || null;
+      const info = employeeNames[ip] || {};
+      return (byMac && byMac.name) || (byIp && byIp.name) || (typeof info === "string" ? info : (info.name || ""));
+    }
+
+    function getDeviceMac(ip) {
+      const info = employeeNames[ip] || {};
+      const h3cMac = normalizeMac(typeof info === "string" ? "" : (info.mac || ""));
+      const byIp = (macBindings.by_ip || {})[ip] || {};
+      return h3cMac || normalizeMac(byIp.mac || "");
+    }
+
+    function getRowMac(ip) {
+      return getDeviceMac(ip);
+    }
+
+    function normalizeMac(mac) {
+      const cleaned = String(mac || "").replace(/[^0-9A-Fa-f]/g, "");
+      if (cleaned.length !== 12) return "";
+      return cleaned.match(/.{1,2}/g).join(":").toUpperCase();
+    }
+
+    function fmtTraffic(n) {
+      const value = Number(n || 0);
+      if (value >= 1024) return `${fixed(value / 1024, 2)}G`;
+      return `${fixed(value, 0)}M`;
+    }
+
+    function formatBitRate(bytesPerSecond) {
+      const bits = Math.max(0, Number(bytesPerSecond || 0) * 8);
+      if (bits >= 1024 * 1024) return `${fixed(bits / 1024 / 1024, 2)} Mbit/s`;
+      if (bits >= 1024) return `${fixed(bits / 1024, 2)} kbit/s`;
+      return `${fixed(bits, 0)} bit/s`;
+    }
+
+    function formatByteRate(bytesPerSecond) {
+      const bytes = Math.max(0, Number(bytesPerSecond || 0));
+      if (bytes >= 1024 * 1024) return `${fixed(bytes / 1024 / 1024, 2)} MB/s`;
+      if (bytes >= 1024) return `${fixed(bytes / 1024, 2)} kB/s`;
+      return `${fixed(bytes, 0)} B/s`;
+    }
+
+    function formatBandwidthRate(bytesPerSecond) {
+      if (bytesPerSecond === undefined || bytesPerSecond === null) return "-";
+      return `${formatBitRate(bytesPerSecond)} (${formatByteRate(bytesPerSecond)})`;
+    }
+
+    function fmtNum(n) { return Number(n || 0).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function fmtPlainNumber(n) { return Number(n || 0).toLocaleString("zh-CN", { maximumFractionDigits: 2 }); }
+    function fixed(n, digits) { return Number(n || 0).toFixed(digits); }
+    function sumRows(rows, key) { return rows.reduce((sum, row) => sum + Number(row[key] || 0), 0); }
+    function emptyRow(cols, text = "等待数据") { return `<tr><td colspan="${cols}" class="center" style="color:var(--muted);padding:22px;">${escapeHtml(text)}</td></tr>`; }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+    }
+
+    function escapeAttr(value) { return escapeHtml(value).replace(/`/g, "&#96;"); }
+    function escapeJsString(value) {
+      return String(value ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\r/g, "\\r").replace(/\n/g, "\\n");
+    }
+
+    window.addEventListener("resize", drawAllCanvases);
+    loadData().then(() => {
+      loadWanBandwidth();
+      setInterval(loadData, 30000);
+      setInterval(loadWanBandwidth, 3000);
+    });
+  </script>
+</body>
+</html>

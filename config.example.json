@@ -1,0 +1,42 @@
+{
+  "gateway": {
+    "url": "http://172.18.188.1/",
+    "username": "root",
+    "password": "your_password",
+    "analyst_path": "/cgi-bin/luci/admin/status/analyst",
+    "timeout": 15,
+    "source_address": "",
+    "no_proxy": ["192.168.20.1", "172.18.188.1"]
+  },
+  "h3c_router": {
+    "enabled": false,
+    "url": "http://192.168.20.1/",
+    "username": "admin",
+    "password": "your_password",
+    "timeout": 8,
+    "cache_seconds": 300
+  },
+  "monitor": {
+    "scrape_interval_seconds": 300,
+    "threshold_down_mb": 2000,
+    "threshold_up_mb": 500,
+    "whitelist": ["192.168.20.1", "192.168.20.2"],
+    "auto_limit_enabled": false,
+    "auto_limit_threshold_down_mb": 3000,
+    "auto_limit_threshold_up_mb": 1000,
+    "auto_limit_release_ratio": 0.5,
+    "auto_limit_interface": "wan"
+  },
+  "deepseek": {
+    "api_key": "",
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-v4-flash",
+    "timeout": 30,
+    "temperature": 0.2,
+    "max_tokens": 1200
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 5102
+  }
+}
